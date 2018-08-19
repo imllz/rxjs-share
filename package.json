@@ -1,0 +1,21 @@
+{
+  "name": "rxjs-share",
+  "version": "1.0.0",
+  "description": "##  RxJS 简介 RxJS 是 Reactive Extensions for JavaScript 的缩写，起源于 Reactive Extensions，是一个基于可观测数据流在异步编程应用中的库。RxJS作为一个库(可以认为rxjs是处理事件的lodash)，可以和任何视图层框架混用。",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/imllz/rxjs-share.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/imllz/rxjs-share/issues"
+  },
+  "homepage": "https://github.com/imllz/rxjs-share#readme",
+  "dependencies": {
+    "rxjs": "^6.2.2"
+  }
+}
