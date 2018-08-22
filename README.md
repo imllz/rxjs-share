@@ -1,7 +1,9 @@
 # rxjs-share
 
-##  RxJS 简介
-RxJS 是 Reactive Extensions for JavaScript 的缩写，起源于 Reactive Extensions，是一个基于可观测数据流在异步编程应用中的库。RxJS作为一个库(可以认为rxjs是处理事件的lodash)，可以和任何视图层框架混用。
+##  Rxjs是什么
+RxJS全名是 Reactive Extensions for JavaScript: Javascript的响应式扩展，是一个基于可观测数据流在异步编程应用中的库。还有支持其他语言的库，比如：Rxjava。RxJS作为一个库(可以认为rxjs是处理事件的lodash)，可以和任何视图层框架混用。
+## 什么是响应式编程(RP: Reactive programming)
+响应式的思路：是把随时间不断变化的数据、状态、事件等等转成可被观察的序列(Observable Sequence)，然后订阅序列中那些Observable对象的变化，一旦变化，就会执行事先安排好的各种转换和操作。响应式编程是使用异步数据流进行编程
 
 ## 先来看一个例子：类百度搜索功能
 
@@ -96,8 +98,6 @@ var inputStream = Rx.Observable.fromEvent(text, 'keyup')
 
 下雨天时，雨滴随时间推移逐渐产生，下落时对水面产生了水波纹的影响，这跟 Rx 中的流是很类似的。而在 Web 中，雨滴可能就是一系列的鼠标点击、键盘点击产生的事件或数据集合等等。
 
-适用场景：1.异步操作重，2.同时处理多个数据源。
-
 ## Observable 和 Observer
 * Observable (可观察对象): 表示一个概念，这个概念是一个可调用的未来值或事件的集合。
 * Observer (观察者): 一个回调函数的集合，它知道如何去监听由Observable 提供的值。
@@ -117,11 +117,14 @@ Observable 的核心关注点：
 import { Observable } from 'rxjs';
 
 function sequenceSubscriber(observer) {
-    // 执行Observable
-  observer.next(1);
-  observer.next(2);
-  observer.next(3);
-  observer.complete();
+   try {
+    observer.next(1);
+    observer.next(2);
+    observer.next(3);
+    observer.complete();
+  } catch (err) {
+    observer.error(err); // 如果捕获到异常会发送一个错误
+  }
   return {unsubscribe() {}};
 }
 const sequence = new Observable(sequenceSubscriber);
@@ -238,10 +241,9 @@ observable.subscribe(x => console.log('Observer got a next value: ' + x));
 可观察对象会随时间生成值。数组是用一组静态的值创建的。某种意义上，可观察对象是异步的，而数组是同步的。 在下列例子中，➞ 符号表示异步传递值。
 
 ![avatar](./images/compare2array1.png)
-![avatar](./images/compare2array2.png)
 
 ### Subject (主体)
-
+Subject 是一种特殊类型的 Observable，它允许将值多播给多个观察者，所以 Subject 是多播的，而普通的 Observables 是单播的(每个已订阅的观察者都拥有 Observable 的独立执行)。
 * Cold数据流
 所谓Cold Observable，就是每次被subscribe都产生一个全新的数据序列的数据流，如下：
 ```
@@ -284,8 +286,99 @@ subject.subscribe({
 
 subject.next(1)
 subject.next(2)
-```
 
+// observerA: 1
+// observerB: 1
+// observerA: 2
+// observerB: 2
+```
+#### Subject的变体 （BehaviorSubject、ReplaySubject、AsyncSubject）
+* BehaviorSubject 它有一个“当前值”的概念。它保存了发送给消费者的最新值。并且当有新的观察者订阅时，会立即从 BehaviorSubject 那接收到“当前值”。可以当成缓存来用。
+```
+const { BehaviorSubject } = require('rxjs')
+
+var subject = new BehaviorSubject(0); // 0是初始值
+
+subject.subscribe({
+  next: (v) => console.log('observerA: ' + v)
+});
+
+subject.next(1);
+subject.next(2);
+
+subject.subscribe({
+  next: (v) => console.log('observerB: ' + v)
+});
+
+subject.next(3);
+
+// observerA: 0
+// observerA: 1
+// observerA: 2
+// observerB: 2
+// observerA: 3
+// observerB: 3
+```
+* ReplaySubject 类似于 BehaviorSubject，它可以发送旧值给新的订阅者，但它还可以记录 Observable 执行的一部分。当创建 ReplaySubject 时，你可以指定回放多少个值：
+```
+const { ReplaySubject } = require('rxjs')
+
+var subject = new ReplaySubject(3); // 为新的订阅者缓冲3个值
+
+subject.subscribe({
+  next: (v) => console.log('observerA: ' + v)
+});
+
+subject.next(1);
+subject.next(2);
+subject.next(3);
+subject.next(4);
+
+subject.subscribe({
+  next: (v) => console.log('observerB: ' + v)
+});
+
+subject.next(5);
+
+// observerA: 1
+// observerA: 2
+// observerA: 3
+// observerA: 4
+// observerB: 2
+// observerB: 3
+// observerB: 4
+// observerA: 5
+// observerB: 5
+```
+除了缓冲数量，你还可以指定 window time (以毫秒为单位)来确定多久之前的值可以记录。在下面的示例中，我们使用了较大的缓存数量100，但 window time 参数只设置了500毫秒。
+```
+new ReplaySubject(100, 500 /* windowTime */)
+```
+* AsyncSubject 只有当 Observable 执行完成时(执行 complete())，它才会将执行的最后一个值发送给观察者。
+```
+const { AsyncSubject } = require('rxjs')
+
+var subject = new AsyncSubject();
+
+subject.subscribe({
+  next: (v) => console.log('observerA: ' + v)
+});
+
+subject.next(1);
+subject.next(2);
+subject.next(3);
+subject.next(4);
+
+subject.subscribe({
+  next: (v) => console.log('observerB: ' + v)
+});
+
+subject.next(5);
+subject.complete();
+
+// observerA: 5
+// observerB: 5
+```
 ### Operators (操作符)
 操作符是 Observable 类型上的方法，比如 .map(...)、.filter(...)、.merge(...)，等等。当操作符被调用时，它们不会改变已经存在的 Observable 实例。相反，它们返回一个新的 Observable ，它的 subscription 逻辑基于第一个 Observable 。
 
@@ -453,83 +546,20 @@ range$.pipe(
 ```
 ### 应用场景
 优点：
-* 对前端的异步编程做了统一，提供一致的API
+* 统一了异步编程的规范，将Promise、ajax、浏览器事件等，通通封装成序列
 * 强大的操作符能够简化异步操作，提升代码的简洁性
 * rxjs6.0对模块化做了优化，更好的支持webpack的tree-shaking
 
 缺点：
 * 学习曲线陡峭，相关文档介绍少，大多资料都停留在v5版本，需要踩坑
-* 并不是所有场景都适合，盲目引入会徒增项目的复杂性
+* 70%的场景不适合，盲目引入会徒增项目的复杂性
 
 适用场景：异步操作繁杂，多数据源
 
 参考1：[流动的数据——使用 RxJS 构造复杂单页应用的数据逻辑](https://zhuanlan.zhihu.com/p/23305264)
 
 参考2：[DaoCloud 基于 RxJS 的前端数据层实践](https://zhuanlan.zhihu.com/p/28958042)
-* 异步操作繁杂，多数据源
-* Angular2+ 重度依赖rxjs
-* vue-rx vue与rxjs结合
 
+参考3：[Angular2+中的rxjs](https://www.angular.cn/guide/observables)
 
-## RxJS 基础实现原理简析
-对流的概念有一定理解后，我们来讲讲 RxJS 是怎么围绕着流的概念来实现的，讲讲 RxJS 的基础实现原理。RxJS 是**基于观察者模式和迭代器模式以函数式编程思维**来实现的。
-
-### 观察者模式
-观察者模式在 Web 中最常见的应该是 DOM 事件的监听和触发。
-
-* 订阅：通过 addEventListener 订阅 document.body 的 click 事件。
-* 发布：当 body 节点被点击时，body 节点便会向订阅者发布这个消息。
-
-![blockchain](https://cloud.githubusercontent.com/assets/10385585/19889545/58dababe-a070-11e6-8e54-be78121f9ba1.png "观察者模式")
-
-
-
-### 迭代器模式
-迭代器模式可以用 JavaScript 提供了 Iterable Protocol 可迭代协议来表示。Iterable Protocol 不是具体的变量类型，而是一种可实现协议。JavaScript 中像 Array、Set 等都属于内置的可迭代类型，可以通过 iterator 方法来获取一个迭代对象，调用迭代对象的 next 方法将获取一个元素对象，如下示例。
-
-```
-var iterable = [1, 2];
- 
-var iterator = iterable[Symbol.iterator]();
- 
-iterator.next(); // => { value: "1", done: false}
-iterator.next(); // => { value: "2", done: false}
- 
-iterator.next(); // => { value: undefined, done: true}
-```
-
-元素对象中：value 表示返回值，done 表示是否已经到达最后。
-
-遍历迭代器可以使用下面做法。
-
-```
-var iterable = [1, 2];
-var iterator = iterable[Symbol.iterator]();
- 
-while(true) {
-    let result;
-    try {
-        result = iterator.next();  // <= 获取下一个值
-    } catch (err) {
-        handleError(err);  // <= 错误处理
-    }
-    if (result.done) {
-        handleCompleted();  // <= 无更多值（已完成）
-        break;
-    }
-    doSomething(result.value);
-}
-```
-主要对应三种情况：
-
-* 获取下一个值: 调用 next 可以将元素一个个地返回，这样就支持了返回多次值。
-
-* 无更多值(已完成): 当无更多值时，next 返回元素中 done 为 true。
-
-* 错误处理: 当 next 方法执行时报错，则会抛出 error 事件，所以可以用try catch 包裹 next 方法处理可能出现的错误。
-
-## 异步编程
-* callback
-* Promise
-* Generator
-* async/await
+参考4：[vue-rx vue与rxjs的结合](https://github.com/vuejs/vue-rx)
