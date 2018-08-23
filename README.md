@@ -2,8 +2,8 @@
 
 ##  Rxjs是什么
 RxJS全名是 Reactive Extensions for JavaScript: Javascript的响应式扩展，是一个基于可观测数据流在异步编程应用中的库。还有支持其他语言的库，比如：Rxjava。RxJS作为一个库(可以认为rxjs是处理事件的lodash)，可以和任何视图层框架混用。
-## 什么是响应式编程(RP: Reactive programming)
-响应式的思路：是把随时间不断变化的数据、状态、事件等等转成可被观察的序列(Observable Sequence)，然后订阅序列中那些Observable对象的变化，一旦变化，就会执行事先安排好的各种转换和操作。响应式编程是使用异步数据流进行编程
+## 响应式编程(RP: Reactive programming)
+响应式的思路：是把随时间不断变化的数据、状态、事件等等转成可被观察的序列(Observable Sequence)，然后订阅序列中那些Observable对象的变化，一旦变化，就会执行事先安排好的各种转换和操作。
 
 ## 先来看一个例子：类百度搜索功能
 
@@ -82,13 +82,26 @@ RxJS全名是 Reactive Extensions for JavaScript: Javascript的响应式扩展�
 ```
 上面代码基本满足需求，但代码开始显得乱糟糟。我们来使用 RxJS 实现上面代码功能，如下
 ```
-var text = document.querySelector('#text');
-var inputStream = Rx.Observable.fromEvent(text, 'keyup')
-                    .debounceTime(250)
-                    .pluck('target', 'value')
-                    .switchMap(url => Http.get(url))
-                    .subscribe(data => render(data));
+const { fromEvent } = require('rxjs')
+const { debounceTime, pluck, switchMap, subscribe } = require('rxjs/operators')
+
+var text = document.querySelector('#text')
+fromEvent(text, 'keyup').pipe(
+  debounceTime(250),
+  pluck('target', 'value'),
+  switchMap(url => Http.get(url))
+).subscribe(data => render(data))                 
 ```
+## rxjs6.0的模块化
+* index文件 提供Observable、Subject等核心类和一些静态操作符方法
+```
+const { Observable, fromEvent } = require('rxjs')
+```
+* rxjs/operators目录 提供所有核心操作符（对应v5.0的实例操作符）
+```
+const { debounceTime, switchMap } = require('rxjs/operators')
+```
+* pipe操作符 管道操作符，定义在Observable实例上唯一的操作符
 
 ##  RxJS · 流 Stream
 学习 RxJS，我们需要从可观测数据流(Streams)说起，它是 Rx 中一个重要的数据类型。
@@ -102,7 +115,7 @@ var inputStream = Rx.Observable.fromEvent(text, 'keyup')
 * Observable (可观察对象): 表示一个概念，这个概念是一个可调用的未来值或事件的集合。
 * Observer (观察者): 一个回调函数的集合，它知道如何去监听由Observable 提供的值。
 ### Observable 剖析
-Observables 是使用 Rx.Observable.create 或创建操作符创建的，并使用观察者来订阅它，然后执行它并发送 next / error / complete 通知给观察者，而且执行可能会被清理。这四个方面全部编码在 Observables 实例中，但某些方面是与其他类型相关的，像 Observer (观察者) 和 Subscription (订阅)。
+Observables 是使用 构造函数Observable 或创建操作符创建的，并使用观察者来订阅它，然后执行它并发送 next / error / complete 通知给观察者，而且执行可能会被清理。这四个方面全部编码在 Observables 实例中，但某些方面是与其他类型相关的，像 Observer (观察者) 和 Subscription (订阅)。
 
 Observable 的核心关注点：
 
@@ -415,6 +428,25 @@ ob$1.pipe(
 ```
 const { timer } = require('rxjs')
 const { merge, map } = require('rxjs/operators')
+
+// timer在初始延时之后开始发送并且在每个时间周期后发出自增的数字。
+const ob$1 = timer(0, 1000).pipe(
+  map(v => v + 'A')
+)
+const ob$2 = timer(500, 1000).pipe(
+  map(v => v + 'B')
+)
+
+ob$1.pipe(
+  merge(ob$2)
+).subscribe(v => console.log(v))
+
+// 0A
+// 0B
+// 1A
+// 1B
+// ....
+```
 * zip 将多个 Observable 组合以创建一个 Observable，该 Observable 的值是由所有输入 Observables 的值按顺序计算而来的。如果最后一个参数是函数, 这个函数被用来计算最终发出的值.否则, 返回一个顺序包含所有输入值的数组
 ```
  const { of, zip } = require('rxjs')
@@ -435,25 +467,8 @@ zip(age$,
 // { age: 29, name: 'Beer', isDev: false }
 ```
 
-// timer在初始延时之后开始发送并且在每个时间周期后发出自增的数字。
-const ob$1 = timer(0, 1000).pipe(
-  map(v => v + 'A')
-)
-const ob$2 = timer(500, 1000).pipe(
-  map(v => v + 'B')
-)
-
-ob$1.pipe(
-  merge(ob$2)
-).subscribe(v => console.log(v))
-
-// 0A
-// 0B
-// 1A
-// 1B
-// ....
-```
 #### 自定义操作符
+输入一个Observable，返回一个新的Observable
 我们创建一个自定义操作符函数，它将从输入 Observable 接收的每个值都乘以10：
 ```
 const { Observable, from } = require('rxjs')
@@ -552,7 +567,7 @@ range$.pipe(
 
 缺点：
 * 学习曲线陡峭，相关文档介绍少，大多资料都停留在v5版本，需要踩坑
-* 70%的场景不适合，盲目引入会徒增项目的复杂性
+* 70~80%的场景不适合，盲目引入会徒增项目的复杂性
 
 适用场景：异步操作繁杂，多数据源
 
