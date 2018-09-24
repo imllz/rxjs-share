@@ -16,8 +16,24 @@ a = b + c
 a: = b + c
 ```
 定义出这种关系之后，每次b或者c产生改变，这个表达式都会被重新计算。不同的库或者语言的实现机制可能不同，写法也不完全一样，但理念是相通的，都是描述出数据之间的联动关系。
+## 为什么Rxjs
+### 异步常见的问题
 
-## 先来看一个例子：类百度搜索功能
+* 竞争条件(Race Condition)
+* 内存泄漏(Memory Leak)
+* 复杂的状态(Complex State)
+* 异常处理(Exception Handling)
+### 各种不同的API
+* DOM Events
+* XMLHttpRequest
+* fetch
+* WebSockets
+* Timer
+* Server Send Events
+* Service Worker
+* Node Stream
+
+## 先来看一个例子：远程搜索功能
 
 一般的实现方式是：监听文本框的输入事件，将输入内容发送到后台，最终将后台返回的数据进行处理并展示成搜索结果。
 ```
@@ -118,10 +134,6 @@ const { debounceTime, switchMap } = require('rxjs/operators')
 ##  RxJS · 流 Stream
 学习 RxJS，我们需要从可观测数据流(Streams)说起，它是 Rx 中一个重要的数据类型。
 流是在时间流逝的过程中产生的一系列事件，它具有时间与事件响应的概念。在前端领域中，DOM事件、WebSocket获得服务端的推送消息、AJAX获取服务端的数据资源（这个流可能只有一个数据）、网页动画显示等等都可以看成是数据流。
-
-![blockchain](https://cloud.githubusercontent.com/assets/10385585/19881194/bd78ec98-a03e-11e6-9a3d-155fcbd3ba35.gif "流")
-
-下雨天时，雨滴随时间推移逐渐产生，下落时对水面产生了水波纹的影响，这跟 Rx 中的流是很类似的。而在 Web 中，雨滴可能就是一系列的鼠标点击、键盘点击产生的事件或数据集合等等。
 
 ## Observable 和 Observer
 * Observable (可观察对象): 表示一个概念，这个概念是一个可调用的未来值或事件的集合。
@@ -240,11 +252,11 @@ observable.subscribe(x => console.log('Observer got a next value: ' + x));
 ### 可观察对象 vs. 承诺
 可观察对象经常拿来和承诺进行对比。有一些关键的不同点：
 
-* 可观察对象是声明式的，在被订阅之前，它不会开始执行。承诺是在创建时就立即执行的。这让可观察对象可用于定义那些应该按需执行的菜谱。
+* 可观察对象是声明式的，在被订阅之前，它不会开始执行。承诺是在创建时就立即执行的。
 
-* 可观察对象能提供多个值。承诺只提供一个。这让可观察对象可用于随着时间的推移获取多个值。
+* 可观察对象能提供多个值。承诺只提供一个。
 
-* 可观察对象会区分串联处理和订阅语句。承诺只有 .then() 语句。这让可观察对象可用于创建供系统的其它部分使用而不希望立即执行的复杂菜谱。
+* 可观察对象会区分串联处理和订阅语句。承诺只有 .then() 语句。
 
 * 可观察对象的 subscribe() 会负责处理错误。承诺会把错误推送给它的子承诺。这让可观察对象可用于进行集中式、可预测的错误处理。
 
@@ -266,6 +278,202 @@ observable.subscribe(x => console.log('Observer got a next value: ' + x));
 可观察对象会随时间生成值。数组是用一组静态的值创建的。某种意义上，可观察对象是异步的，而数组是同步的。 在下列例子中，➞ 符号表示异步传递值。
 
 ![avatar](./images/compare2array1.png)
+### Operators (操作符)
+操作符是 Observable 类型上的方法，比如 .map(...)、.filter(...)、.merge(...)，等等。当操作符被调用时，它们不会改变已经存在的 Observable 实例。相反，它们返回一个新的 Observable ，它的 subscription 逻辑基于第一个 Observable 。
+
+操作符本质上是一个纯函数 (pure function)，它接收一个 Observable 作为输入，并生成一个新的 Observable 作为输出。订阅输出 Observable 同样会订阅输入 Observable 。
+#### 实例操作符 vs. 静态操作符
+* 绝大多数都是实例操作符
+* 最常用的静态操作符类型是所谓的创建操作符
+#### 常用的操作符
+
+类别|操作
+-|-
+创建|from , fromEvent , of , interval
+组合|combineLatest , concat , merge , startWith , withLatestFrom , zip
+过滤|debounceTime , distinctUntilChanged , filter , take , takeUntil
+转换|bufferTime , concatMap , map , mergeMap , scan , switchMap
+工具|tap
+多播|share
+##### map
+类比数组的map方法
+```
+const { interval } = require('rxjs')
+const { map } = require('rxjs/operators')
+
+var source = interval(1000);
+   
+source.pipe(
+  map(v => v * 10)
+).subscribe({
+    next: (value) => { console.log(value); },
+    error: (err) => { console.log('Error: ' + err); },
+    complete: () => { console.log('complete'); }
+});
+// 0
+// 10
+// 20
+// ...
+```
+##### take
+取特定个数的值后，触发Observable的complete
+```
+const { interval, fromEvent } = require('rxjs')
+const { take } = require('rxjs/operators')
+
+var source = interval(1000).take(3);
+   
+source.subscribe({
+    next: (value) => { console.log(value); },
+    error: (err) => { console.log('Error: ' + err); },
+    complete: () => { console.log('complete'); }
+});
+// 0
+// 1
+// 2
+// complete
+```
+##### takeUntil
+他可以在某件事情发生时，让一个 observable 值送出 完成(complete)
+```
+const { interval, fromEvent } = require('rxjs')
+const { takeUntil } = require('rxjs/operators')
+
+var source = interval(1000);
+var click = fromEvent(document.body, 'click');
+var example = source.takeUntil(click);     
+   
+example.subscribe({
+    next: (value) => { console.log(value); },
+    error: (err) => { console.log('Error: ' + err); },
+    complete: () => { console.log('complete'); }
+});
+// 0
+// 1
+// 2
+// 3
+// complete (點擊body了
+```
+##### concatAll
+source observable 內部每次發送的值也是 observable(高阶observable)，这时我们用 concatAll 就可以把 source 打平成 example。
+
+这里需要注意的是 concatAll 会处理 source 先发出來的 observable，必须等这个 observable 结束，才会处理下一个 source 发出來的 observable，让我们看下面这个例子。
+```
+const { interval, of } = require('rxjs')
+const { take } = require('rxjs/operators')
+
+var obs1 = interval(1000).take(5);
+var obs2 = interval(500).take(2);
+var obs3 = interval(2000).take(1);
+
+var source = of(obs1, obs2, obs3);
+
+var example = source.concatAll();
+
+example.subscribe({
+    next: (value) => { console.log(value); },
+    error: (err) => { console.log('Error: ' + err); },
+    complete: () => { console.log('complete'); }
+});
+// 0
+// 1
+// 2
+// 3
+// 4
+// 0
+// 1
+// 0
+// complete
+```
+#### 自定义操作符
+输入一个Observable，返回一个新的Observable
+我们创建一个自定义操作符函数，它将从输入 Observable 接收的每个值都乘以10：
+```
+const { Observable, from } = require('rxjs')
+
+function multiplyByTen(input) {
+  var output = new Observable(function subscribe(observer) {
+    input.subscribe({
+      next: (v) => observer.next(10 * v),
+      error: (err) => observer.error(err),
+      complete: () => observer.complete()
+    })
+  })
+  return output
+}
+
+var input = from([1, 2, 3, 4])
+var output = multiplyByTen(input)
+output.subscribe(x => console.log(x))
+```
+#### 例子：实现简易拖拽
+需求描述：
+
+* 首先画面上有一个元件(#drag)
+* 当鼠标在元件(#drag)上按下左键(mousedown)时，开始监听鼠标移动(mousemove)的位置
+* 当鼠标左键放掉(mouseup)时，结束监听鼠标移动
+* 当鼠标移动(mousemove)被监听时，跟着修改元件的样式属性
+
+我们要先取得各个 DOM 元素，元素(#drag) 跟 body。
+```
+const dragDOM = document.getElementById('drag');
+const body = document.body;
+```
+我们对各个元素监听事件，并用 fromEvent 來取得各个 observable
+```
+const mouseDown = fromEvent(dragDOM, 'mousedown');
+const mouseUp = fromEvent(body, 'mouseup');
+const mouseMove = fromEvent(body, 'mousemove');
+```
+当 mouseDown 时，转化成 mouseMove 的事件
+```
+const source = mouseDown.map(event => mouseMove)
+```
+mouseMove 要在 mouseUp 后结束
+加上 takeUntil(mouseUp)
+```
+const source = mouseDown
+               .map(event => mouseMove.takeUntil(mouseUp))
+```
+用 concatAll() 摆平 source 成一维
+```
+const source = mouseDown
+               .map(event => mouseMove.takeUntil(mouseUp))
+               .concatAll();                 
+```
+用 map 把 mousemove event 轉成 x,y 的位置，並且訂閱。
+```
+source
+.map(m => {
+    return {
+        x: m.clientX,
+        y: m.clientY
+    }
+})
+.subscribe(pos => {
+  	dragDOM.style.left = pos.x + 'px';
+    dragDOM.style.top = pos.y + 'px';
+})    
+```
+
+完整代码
+```
+const dragDOM = document.getElementById('drag');
+const body = document.body;
+
+const mouseDown = Rx.Observable.fromEvent(dragDOM, 'mousedown');
+const mouseUp = Rx.Observable.fromEvent(body, 'mouseup');
+const mouseMove = Rx.Observable.fromEvent(body, 'mousemove');
+
+mouseDown
+  .map(event => mouseMove.takeUntil(mouseUp))
+  .concatAll()
+  .map(event => ({ x: event.clientX, y: event.clientY }))
+  .subscribe(pos => {
+  	dragDOM.style.left = pos.x + 'px';
+    dragDOM.style.top = pos.y + 'px';
+  })
+```
 
 ### Subject (主体)
 Subject 是一种特殊类型的 Observable，它允许将值多播给多个观察者，所以 Subject 是多播的，而普通的 Observables 是单播的(每个已订阅的观察者都拥有 Observable 的独立执行)。
@@ -404,103 +612,6 @@ subject.complete();
 // observerA: 5
 // observerB: 5
 ```
-### Operators (操作符)
-操作符是 Observable 类型上的方法，比如 .map(...)、.filter(...)、.merge(...)，等等。当操作符被调用时，它们不会改变已经存在的 Observable 实例。相反，它们返回一个新的 Observable ，它的 subscription 逻辑基于第一个 Observable 。
-
-操作符本质上是一个纯函数 (pure function)，它接收一个 Observable 作为输入，并生成一个新的 Observable 作为输出。订阅输出 Observable 同样会订阅输入 Observable 。
-#### 实例操作符 vs. 静态操作符
-* 绝大多数都是实例操作符
-* 最常用的静态操作符类型是所谓的创建操作符
-#### 常用的操作符
-
-类别|操作
--|-
-创建|from , fromEvent , of , interval
-组合|combineLatest , concat , merge , startWith , withLatestFrom , zip
-过滤|debounceTime , distinctUntilChanged , filter , take , takeUntil
-转换|bufferTime , concatMap , map , mergeMap , scan , switchMap
-工具|tap
-多播|share
-#### 组合操作符
-* concat 首尾相连，只支持同步数据
-```
-const { of } = require('rxjs')
-const { concat } = require('rxjs/operators')
-
-const ob$1 = of(1, 2, 3)
-const ob$2 = of(4, 5, 6)
-
-ob$1.pipe(
-  concat(ob$2)
-).subscribe(v => console.log(v))
-
-// 1, 2, 3, 4, 5, 6
-```
-* merge 先到先得快速通过
-```
-const { timer } = require('rxjs')
-const { merge, map } = require('rxjs/operators')
-
-// timer在初始延时之后开始发送并且在每个时间周期后发出自增的数字。
-const ob$1 = timer(0, 1000).pipe(
-  map(v => v + 'A')
-)
-const ob$2 = timer(500, 1000).pipe(
-  map(v => v + 'B')
-)
-
-ob$1.pipe(
-  merge(ob$2)
-).subscribe(v => console.log(v))
-
-// 0A
-// 0B
-// 1A
-// 1B
-// ....
-```
-* zip 将多个 Observable 组合以创建一个 Observable，该 Observable 的值是由所有输入 Observables 的值按顺序计算而来的。如果最后一个参数是函数, 这个函数被用来计算最终发出的值.否则, 返回一个顺序包含所有输入值的数组
-```
- const { of, zip } = require('rxjs')
-
-const age$ = of(27, 25, 29)
-const name$ = of('Foo', 'Bar', 'Beer')
-const isDev$ = of(true, true, false)
-
-zip(age$,
-    name$,
-    isDev$,
-    (age, name, isDev) => ({ age, name, isDev }))
-.subscribe(x => console.log(x))
-
-// 输出：
-// { age: 27, name: 'Foo', isDev: true }
-// { age: 25, name: 'Bar', isDev: true }
-// { age: 29, name: 'Beer', isDev: false }
-```
-
-#### 自定义操作符
-输入一个Observable，返回一个新的Observable
-我们创建一个自定义操作符函数，它将从输入 Observable 接收的每个值都乘以10：
-```
-const { Observable, from } = require('rxjs')
-
-function multiplyByTen(input) {
-  var output = new Observable(function subscribe(observer) {
-    input.subscribe({
-      next: (v) => observer.next(10 * v),
-      error: (err) => observer.error(err),
-      complete: () => observer.complete()
-    })
-  })
-  return output
-}
-
-var input = from([1, 2, 3, 4])
-var output = multiplyByTen(input)
-output.subscribe(x => console.log(x))
-```
-
 ### 异常处理 (catchError, retry, retryWhen)
 * catchError 捕获
 ```
@@ -571,7 +682,11 @@ range$.pipe(
   catchError(e => of('新的Observable'))
 ).subscribe(v => console.log(v))
 ```
+
 ### 应用场景
+
+[30 天精通 RxJS (11)： 實務範例 - 完整拖拉應用](https://ithelp.ithome.com.tw/articles/10187756)
+
 优点：
 * 统一了异步编程的规范，将Promise、ajax、浏览器事件等，通通封装成序列
 * 强大的操作符能够简化异步操作，提升代码的简洁性
@@ -579,7 +694,7 @@ range$.pipe(
 
 缺点：
 * 学习曲线陡峭，相关文档介绍少，大多资料都停留在v5版本，需要踩坑
-* 70~80%的场景不适合，盲目引入会徒增项目的复杂性
+* 70%的场景不适合，盲目引入会徒增项目的复杂性
 
 适用场景：异步操作繁杂，多数据源
 
