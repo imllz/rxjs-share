@@ -1,7 +1,7 @@
 # rxjs初体验及其适用性讨论
 
 ##  Rxjs是什么
-RxJS全名是 Reactive Extensions for JavaScript: Javascript的响应式扩展，是一个基于可观测数据流在异步编程应用中的库。还有支持其他语言的库，比如：Rxjava。RxJS作为一个库(可以认为rxjs是处理事件的lodash)，可以和任何视图层框架混用。
+RxJS全名是 Reactive Extensions for JavaScript: Javascript的响应式扩展，是一个基于可观测数据流在异步编程应用中的Library(可以认为rxjs是处理异步行为的lodash)，可以和任何视图层框架混用。
 ## 响应式编程(RP: Reactive programming)
 响应式的思路：是把随时间不断变化的数据、状态、事件等等转成可被观察的序列(Observable Sequence)，然后订阅序列中那些Observable对象的变化，一旦变化，就会执行事先安排好的各种转换和操作。
 
@@ -117,7 +117,7 @@ var text = document.querySelector('#text')
 fromEvent(text, 'keyup').pipe(
   debounceTime(250),
   pluck('target', 'value'),
-  switchMap(url => Http.get(url))
+  switchMap(searchText => Http.get(`search.qq.com/${searchText}`))
 ).subscribe(data => render(data))                 
 ```
 ## rxjs6.0的模块化
@@ -204,7 +204,7 @@ Observable 执行可以传递三种类型的值：
 
 next*(error|complete)?
 ```
-var observable = Rx.Observable.create(function subscribe(observer) {
+var observable = new Observable(function subscribe(observer) {
   observer.next(1);
   observer.next(2);
   observer.next(3);
@@ -214,7 +214,7 @@ var observable = Rx.Observable.create(function subscribe(observer) {
 ```
 #### 清理 Observable 执行
 ```
-var observable = Rx.Observable.create(function subscribe(observer) {
+var observable = new Observable(function subscribe(observer) {
   // 追踪 interval 资源
   var intervalID = setInterval(() => {
     observer.next('hi');
@@ -225,8 +225,8 @@ var observable = Rx.Observable.create(function subscribe(observer) {
     clearInterval(intervalID);
   };
 });
-var unsubscribe = observable.subscribe({next: (x) => console.log(x)});
-unsubscribe(); // 清理资源
+var subscription = observable.subscribe({next: (x) => console.log(x)});
+subscription.unsubscribe(); // 清理资源
 ```
 ### Observer (观察者)
 什么是观察者？ - 观察者是由 Observable 发送的值的消费者。观察者只是一组回调函数的集合，每个回调函数对应一种 Observable 发送的通知类型：next、error 和 complete 。下面的示例是一个典型的观察者对象：
@@ -685,8 +685,6 @@ range$.pipe(
 
 ### 应用场景
 
-[30 天精通 RxJS (11)： 實務範例 - 完整拖拉應用](https://ithelp.ithome.com.tw/articles/10187756)
-
 优点：
 * 统一了异步编程的规范，将Promise、ajax、浏览器事件等，通通封装成序列
 * 强大的操作符能够简化异步操作，提升代码的简洁性
@@ -697,6 +695,8 @@ range$.pipe(
 * 70%的场景不适合，盲目引入会徒增项目的复杂性
 
 适用场景：异步操作繁杂，多数据源
+
+[30 天精通 RxJS (11)： 實務範例 - 完整拖拉應用](https://ithelp.ithome.com.tw/articles/10187756)
 
 参考1：[流动的数据——使用 RxJS 构造复杂单页应用的数据逻辑](https://zhuanlan.zhihu.com/p/23305264)
 
