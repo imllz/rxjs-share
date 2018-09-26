@@ -2,6 +2,7 @@
 
 ##  Rxjs是什么
 RxJS全名是 Reactive Extensions for JavaScript: Javascript的响应式扩展，是一个基于可观测数据流在异步编程应用中的Library(可以认为rxjs是处理异步行为的lodash)，可以和任何视图层框架混用。
+
 ## 响应式编程(RP: Reactive programming)
 响应式的思路：是把随时间不断变化的数据、状态、事件等等转成可被观察的序列(Observable Sequence)，然后订阅序列中那些Observable对象的变化，一旦变化，就会执行事先安排好的各种转换和操作。
 
@@ -120,6 +121,13 @@ fromEvent(text, 'keyup').pipe(
   switchMap(searchText => Http.get(`search.qq.com/${searchText}`))
 ).subscribe(data => render(data))                 
 ```
+一些理解：把（已经发生或者将要发生的）某组事件（通过某种规则）转化成另一组事件，最终对其进行订阅的库。
+
+同样环境下要完成同样的目标时……通常的思考方式是：
+
+当什么事件发生了，就去做什么，改变什么状态，触发或延迟触发另外的事件，然后如何处理这些事件……事无巨细地去描述自己要一步步做什么。
+
+RxJS的思考方式是：如何把这组事件转化成另一组事件，再转化成下一组事件，最终得到一组真正有用的事件并订阅它。
 ## rxjs6.0的模块化
 * index文件 提供Observable、Subject等核心类和一些静态操作符方法
 ```
