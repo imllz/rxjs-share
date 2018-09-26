@@ -61,7 +61,7 @@ a: = b + c
 已无用的请求仍然执行:
 一开始搜了“vue”，然后马上改搜索“Angular”。结果后台返回了“vue”的搜索结果，执行渲染逻辑后结果框展示了“vue”的结果，而不是当前正在搜索的“Angular”，这是不正确的。
 
-减少多余请求数，可以用 setTimeout 函数节流的方式来处理，核心代码如下
+减少多余请求数，可以用 setTimeout 函数去抖动的方式来处理，核心代码如下
 ```
 <input id="text"></input>
 <script>
@@ -139,14 +139,14 @@ const { debounceTime, switchMap } = require('rxjs/operators')
 * Observable (可观察对象): 表示一个概念，这个概念是一个可调用的未来值或事件的集合。
 * Observer (观察者): 一个回调函数的集合，它知道如何去监听由Observable 提供的值。
 ### Observable 剖析
-Observables 是使用 构造函数Observable 或创建操作符创建的，并使用观察者来订阅它，然后执行它并发送 next / error / complete 通知给观察者，而且执行可能会被清理。这四个方面全部编码在 Observables 实例中，但某些方面是与其他类型相关的，像 Observer (观察者) 和 Subscription (订阅)。
+Observables 是使用 构造函数Observable 或创建操作符创建的，并使用观察者来订阅它，然后执行它并发送 next / error / complete 通知给观察者，而且执行可能会被清理。这四个方面全部编码在 Observable 实例中，但某些方面是与其他类型相关的，像 Observer (观察者) 和 Subscription (订阅)。
 
 Observable 的核心关注点：
 
-* 创建 Observables
-* 订阅 Observables
-* 执行 Observables
-* 清理 Observables
+* 创建 Observable
+* 订阅 Observable
+* 执行 Observable
+* 清理 Observable
 
 #### 创建可观察对象Observable
 * 通过构造函数
@@ -182,7 +182,7 @@ socket$.next(JSON.stringify({ op: 'hello' }));
 ```
 * of、interval等等都可以创建一个Observable对象
 
-#### 订阅 Observables
+#### 订阅 Observable
 ```
 observable.subscribe({
   next: x => console.log('Observer got a next value: ' + x),
@@ -190,7 +190,7 @@ observable.subscribe({
   complete: () => console.log('Observer got a complete notification'),
 })
 ```
-#### 执行 Observables
+#### 执行 Observable
 Observable.create(function subscribe(observer) {...}) 中...的代码表示 “Observable 执行”，它是惰性运算，只有在每个观察者订阅后才会执行。随着时间的推移，执行会以同步或异步的方式产生多个值。
 
 Observable 执行可以传递三种类型的值：
@@ -524,93 +524,6 @@ subject.next(2)
 // observerB: 1
 // observerA: 2
 // observerB: 2
-```
-#### Subject的变体 （BehaviorSubject、ReplaySubject、AsyncSubject）
-* BehaviorSubject 它有一个“当前值”的概念。它保存了发送给消费者的最新值。并且当有新的观察者订阅时，会立即从 BehaviorSubject 那接收到“当前值”。可以当成缓存来用。
-```
-const { BehaviorSubject } = require('rxjs')
-
-var subject = new BehaviorSubject(0); // 0是初始值
-
-subject.subscribe({
-  next: (v) => console.log('observerA: ' + v)
-});
-
-subject.next(1);
-subject.next(2);
-
-subject.subscribe({
-  next: (v) => console.log('observerB: ' + v)
-});
-
-subject.next(3);
-
-// observerA: 0
-// observerA: 1
-// observerA: 2
-// observerB: 2
-// observerA: 3
-// observerB: 3
-```
-* ReplaySubject 类似于 BehaviorSubject，它可以发送旧值给新的订阅者，但它还可以记录 Observable 执行的一部分。当创建 ReplaySubject 时，你可以指定回放多少个值：
-```
-const { ReplaySubject } = require('rxjs')
-
-var subject = new ReplaySubject(3); // 为新的订阅者缓冲3个值
-
-subject.subscribe({
-  next: (v) => console.log('observerA: ' + v)
-});
-
-subject.next(1);
-subject.next(2);
-subject.next(3);
-subject.next(4);
-
-subject.subscribe({
-  next: (v) => console.log('observerB: ' + v)
-});
-
-subject.next(5);
-
-// observerA: 1
-// observerA: 2
-// observerA: 3
-// observerA: 4
-// observerB: 2
-// observerB: 3
-// observerB: 4
-// observerA: 5
-// observerB: 5
-```
-除了缓冲数量，你还可以指定 window time (以毫秒为单位)来确定多久之前的值可以记录。在下面的示例中，我们使用了较大的缓存数量100，但 window time 参数只设置了500毫秒。
-```
-new ReplaySubject(100, 500 /* windowTime */)
-```
-* AsyncSubject 只有当 Observable 执行完成时(执行 complete())，它才会将执行的最后一个值发送给观察者。
-```
-const { AsyncSubject } = require('rxjs')
-
-var subject = new AsyncSubject();
-
-subject.subscribe({
-  next: (v) => console.log('observerA: ' + v)
-});
-
-subject.next(1);
-subject.next(2);
-subject.next(3);
-subject.next(4);
-
-subject.subscribe({
-  next: (v) => console.log('observerB: ' + v)
-});
-
-subject.next(5);
-subject.complete();
-
-// observerA: 5
-// observerB: 5
 ```
 ### 异常处理 (catchError, retry, retryWhen)
 * catchError 捕获
