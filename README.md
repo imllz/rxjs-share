@@ -613,11 +613,11 @@ range$.pipe(
 
 缺点：
 * 学习曲线陡峭，相关文档介绍少，大多资料都停留在v5版本，需要踩坑
-* 70%的场景不适合，盲目引入会徒增项目的复杂性
+* 看场景，不是一种普适性的解决方案
 
 适用场景：异步操作繁杂，多数据源
 
-[30 天精通 RxJS (11)： 實務範例 - 完整拖拉應用](https://ithelp.ithome.com.tw/articles/10187756)
+[完整的拖拽应用](https://ithelp.ithome.com.tw/articles/10187756)
 
 参考1：[流动的数据——使用 RxJS 构造复杂单页应用的数据逻辑](https://zhuanlan.zhihu.com/p/23305264)
 
