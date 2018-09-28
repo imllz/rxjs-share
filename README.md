@@ -1,9 +1,12 @@
 # rxjs初体验及其适用性讨论
 
-##  Rxjs是什么
+##  Rxjs是什么（What？）
 RxJS全名是 Reactive Extensions for JavaScript: Javascript的响应式扩展，是一个基于可观测数据流在异步编程应用中的Library(可以认为rxjs是处理异步行为的lodash)，可以和任何视图层框架混用。
 
-## 响应式编程(RP: Reactive programming)
+RxJS提供 Observable 核心类型 
+（[TC39关于Observable的提案](https://tc39.github.io/proposal-observable/)）附属类型 Observer、 Subscrition、 Subjects，和一堆强大的操作符Operators工具函数，旨在简化异常操作的复杂性。
+
+## 响应式的思路(RP: Reactive programming)
 响应式的思路：是把随时间不断变化的数据、状态、事件等等转成可被观察的序列(Observable Sequence)，然后订阅序列中那些Observable对象的变化，一旦变化，就会执行事先安排好的各种转换和操作。
 
 举个栗子：比如说，abc三个变量之间存在加法关系：
@@ -17,7 +20,27 @@ a = b + c
 a: = b + c
 ```
 定义出这种关系之后，每次b或者c产生改变，这个表达式都会被重新计算。不同的库或者语言的实现机制可能不同，写法也不完全一样，但理念是相通的，都是描述出数据之间的联动关系。
-## 为什么Rxjs
+```
+var Rx = require('rxjs');
+
+let b$ = Rx.Observable.from([1,3]);
+let c$ = Rx.Observable.from([2,2]);
+
+let a$ = Rx.Observable.zip(b$,c$,(b,c)=>{
+   console.log('b='+b);
+   console.log('c='+c);
+   return b + c;
+});
+a$.subscribe(a=> console.log('a='+a));
+
+// b=1
+// c=2
+// a=3
+// b=3
+// c=2
+// a=5
+```
+## 为什么Rxjs（Why？）
 ### 异步常见的问题
 
 * 竞争条件(Race Condition)
@@ -118,7 +141,7 @@ var text = document.querySelector('#text')
 fromEvent(text, 'keyup').pipe(
   debounceTime(250),
   pluck('target', 'value'),
-  switchMap(searchText => Http.get(`search.qq.com/${searchText}`))
+  switchMap(searchText => Http.get(`search.qq.com/${searchText}`)
 ).subscribe(data => render(data))                 
 ```
 一些理解：把（已经发生或者将要发生的）某组事件（通过某种规则）转化成另一组事件，最终对其进行订阅的库。
@@ -128,7 +151,7 @@ fromEvent(text, 'keyup').pipe(
 当什么事件发生了，就去做什么，改变什么状态，触发或延迟触发另外的事件，然后如何处理这些事件……事无巨细地去描述自己要一步步做什么。
 
 RxJS的思考方式是：如何把这组事件转化成另一组事件，再转化成下一组事件，最终得到一组真正有用的事件并订阅它。
-## rxjs6.0的模块化
+## rxjs6.0的模块化(How?)
 * index文件 提供Observable、Subject等核心类和一些静态操作符方法
 ```
 const { Observable, fromEvent } = require('rxjs')
@@ -138,10 +161,6 @@ const { Observable, fromEvent } = require('rxjs')
 const { debounceTime, switchMap } = require('rxjs/operators')
 ```
 * pipe操作符 管道操作符，定义在Observable实例上唯一的操作符
-
-##  RxJS · 流 Stream
-学习 RxJS，我们需要从可观测数据流(Streams)说起，它是 Rx 中一个重要的数据类型。
-流是在时间流逝的过程中产生的一系列事件，它具有时间与事件响应的概念。在前端领域中，DOM事件、WebSocket获得服务端的推送消息、AJAX获取服务端的数据资源（这个流可能只有一个数据）、网页动画显示等等都可以看成是数据流。
 
 ## Observable 和 Observer
 * Observable (可观察对象): 表示一个概念，这个概念是一个可调用的未来值或事件的集合。
@@ -156,7 +175,7 @@ Observable 的核心关注点：
 * 执行 Observable
 * 清理 Observable
 
-#### 创建可观察对象Observable
+#### 创建可观察对象Observable(数据的生产者)
 * 通过构造函数
 ```
 import { Observable } from 'rxjs';
@@ -236,7 +255,7 @@ var observable = new Observable(function subscribe(observer) {
 var subscription = observable.subscribe({next: (x) => console.log(x)});
 subscription.unsubscribe(); // 清理资源
 ```
-### Observer (观察者)
+### Observer 观察者(数据的消费者)
 什么是观察者？ - 观察者是由 Observable 发送的值的消费者。观察者只是一组回调函数的集合，每个回调函数对应一种 Observable 发送的通知类型：next、error 和 complete 。下面的示例是一个典型的观察者对象：
 ```
 var observer = {
@@ -260,39 +279,34 @@ observable.subscribe(x => console.log('Observer got a next value: ' + x));
 ### 可观察对象 vs. 承诺
 可观察对象经常拿来和承诺进行对比。有一些关键的不同点：
 
-* 可观察对象是声明式的，在被订阅之前，它不会开始执行。承诺是在创建时就立即执行的。
+* 可观察对象是声明式的，在被订阅之前，它不会开始执行(惰性的)。承诺是在创建时就立即执行的。
 
 * 可观察对象能提供多个值。承诺只提供一个。
 
 * 可观察对象会区分串联处理和订阅语句。承诺只有 .then() 语句。
 
-* 可观察对象的 subscribe() 会负责处理错误。承诺会把错误推送给它的子承诺。这让可观察对象可用于进行集中式、可预测的错误处理。
 
 下列代码片段揭示了同样的操作要如何分别使用可观察对象和承诺进行实现。
 
 ![avatar](./images/compare2promise.png)
 
 ### 可观察对象 vs. 事件 API
-可观察对象和事件 API 中的事件处理器很像。这两种技术都会定义通知处理器，并使用它们来处理一段时间内传递的多个值。订阅可观察对象与添加事件处理器是等价的。一个显著的不同是你可以配置可观察对象，使其在把事件传给事件处理器之间先进行转换。
-
-![avatar](./images/compare2event.png)
-
-使用可观察对象来处理错误和异步操作在 HTTP 请求这样的场景下更加具有一致性。
+可观察对象和事件 API 中的事件处理器很像。一个显著的不同是你可以配置可观察对象，使其在把事件传给事件处理器之间先进行转换。
 
 下列代码片段揭示了同样的操作要如何分别使用可观察对象和事件 API 进行实现。
+![avatar](./images/compare2event.png)
 
 ### 可观察对象 vs. 数组
 
 可观察对象会随时间生成值。数组是用一组静态的值创建的。某种意义上，可观察对象是异步的，而数组是同步的。 在下列例子中，➞ 符号表示异步传递值。
 
 ![avatar](./images/compare2array1.png)
-### Operators (操作符)
-操作符是 Observable 类型上的方法，比如 .map(...)、.filter(...)、.merge(...)，等等。当操作符被调用时，它们不会改变已经存在的 Observable 实例。相反，它们返回一个新的 Observable ，它的 subscription 逻辑基于第一个 Observable 。
+
+### Operators 操作符(数据的加工)
+提供了几十种操作Observable的工具函数，比如 .map(...)、.filter(...)、.merge(...)，等等。当操作符被调用时，它们不会改变已经存在的 Observable 实例。相反，它们返回一个新的 Observable ，它的 subscription 逻辑基于第一个 Observable 。
 
 操作符本质上是一个纯函数 (pure function)，它接收一个 Observable 作为输入，并生成一个新的 Observable 作为输出。订阅输出 Observable 同样会订阅输入 Observable 。
-#### 实例操作符 vs. 静态操作符
-* 绝大多数都是实例操作符
-* 最常用的静态操作符类型是所谓的创建操作符
+
 #### 常用的操作符
 
 类别|操作
@@ -303,7 +317,8 @@ observable.subscribe(x => console.log('Observer got a next value: ' + x));
 转换|bufferTime , concatMap , map , mergeMap , scan , switchMap
 工具|tap
 多播|share
-##### map
+异常|catchError, retry, retryWhen
+##### map 操作符
 类比数组的map方法
 ```
 const { interval } = require('rxjs')
@@ -323,7 +338,7 @@ source.pipe(
 // 20
 // ...
 ```
-##### take
+##### take 操作符
 取特定个数的值后，触发Observable的complete
 ```
 const { interval, fromEvent } = require('rxjs')
@@ -341,7 +356,7 @@ source.subscribe({
 // 2
 // complete
 ```
-##### takeUntil
+##### takeUntil 操作符
 他可以在某件事情发生时，让一个 observable 值送出 完成(complete)
 ```
 const { interval, fromEvent } = require('rxjs')
@@ -360,9 +375,9 @@ example.subscribe({
 // 1
 // 2
 // 3
-// complete (點擊body了
+// complete (點擊body了)
 ```
-##### concatAll
+##### concatAll 操作符
 source observable 內部每次發送的值也是 observable(高阶observable)，这时我们用 concatAll 就可以把 source 打平成 example。
 
 这里需要注意的是 concatAll 会处理 source 先发出來的 observable，必须等这个 observable 结束，才会处理下一个 source 发出來的 observable，让我们看下面这个例子。
@@ -440,24 +455,28 @@ const source = mouseDown.map(event => mouseMove)
 mouseMove 要在 mouseUp 后结束
 加上 takeUntil(mouseUp)
 ```
-const source = mouseDown
-               .map(event => mouseMove.takeUntil(mouseUp))
+const source = mouseDown.pipe(
+  map(event => mouseMove.takeUntil(mouseUp))
+)
+               
 ```
 用 concatAll() 摆平 source 成一维
 ```
-const source = mouseDown
-               .map(event => mouseMove.takeUntil(mouseUp))
-               .concatAll();                 
+const source = mouseDown.pipe(
+    map(event => mouseMove.takeUntil(mouseUp)),
+    concatAll()
+)             
 ```
 用 map 把 mousemove event 轉成 x,y 的位置，並且訂閱。
 ```
-source
-.map(m => {
-    return {
-        x: m.clientX,
-        y: m.clientY
-    }
-})
+source.pipe(
+    map(m => {
+        return {
+            x: m.clientX,
+            y: m.clientY
+        }
+    })
+)
 .subscribe(pos => {
   	dragDOM.style.left = pos.x + 'px';
     dragDOM.style.top = pos.y + 'px';
@@ -469,18 +488,18 @@ source
 const dragDOM = document.getElementById('drag');
 const body = document.body;
 
-const mouseDown = Rx.Observable.fromEvent(dragDOM, 'mousedown');
-const mouseUp = Rx.Observable.fromEvent(body, 'mouseup');
-const mouseMove = Rx.Observable.fromEvent(body, 'mousemove');
+const mouseDown = fromEvent(dragDOM, 'mousedown');
+const mouseUp = fromEvent(body, 'mouseup');
+const mouseMove = fromEvent(body, 'mousemove');
 
-mouseDown
-  .map(event => mouseMove.takeUntil(mouseUp))
-  .concatAll()
-  .map(event => ({ x: event.clientX, y: event.clientY }))
-  .subscribe(pos => {
-  	dragDOM.style.left = pos.x + 'px';
-    dragDOM.style.top = pos.y + 'px';
-  })
+mouseDown.pipe(
+  map(event => mouseMove.takeUntil(mouseUp)),
+  concatAll(),
+  map(event => ({ x: event.clientX, y: event.clientY }))
+).subscribe(pos => {
+  dragDOM.style.left = pos.x + 'px';
+  dragDOM.style.top = pos.y + 'px';
+})
 ```
 
 ### Subject (主体)
