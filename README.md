@@ -197,15 +197,13 @@ const sequence = new Observable(sequenceSubscriber);
 ```
 import { from } from 'rxjs';
 
-const data = from(fetch('/api/endpoint'));
+const data$ = from(fetch('/api/endpoint'));
 ```
 * fromEvent方法 （The DOM EventTarget, Node.js EventEmitter, JQuery-like event target, NodeList or HTMLCollection to attach the event handler to）
 ```
 import { fromEvent } from 'rxjs';
 
-let socket$ = fromEvent(new WebSocket('ws://localhost:8081'));
-// 可以发送消息给服务端
-socket$.next(JSON.stringify({ op: 'hello' }));
+let click$ = fromEvent(document, 'click');
 ```
 * of、interval等等都可以创建一个Observable对象
 
@@ -357,16 +355,16 @@ source.subscribe({
 // complete
 ```
 ##### takeUntil 操作符
-他可以在某件事情发生时，让一个 observable 值送出 完成(complete)
+他可以在某件事情发生时，让一个 observable 值送出 完成(complete)信号
 ```
 const { interval, fromEvent } = require('rxjs')
 const { takeUntil } = require('rxjs/operators')
 
-var source = interval(1000);
-var click = fromEvent(document.body, 'click');
-var example = source.takeUntil(click);     
+var source$ = interval(1000);
+var click$ = fromEvent(document.body, 'click');
+var example$ = source.takeUntil(click$);     
    
-example.subscribe({
+example$.subscribe({
     next: (value) => { console.log(value); },
     error: (err) => { console.log('Error: ' + err); },
     complete: () => { console.log('complete'); }
@@ -383,17 +381,19 @@ source observable 內部每次發送的值也是 observable(高阶observable)，
 这里需要注意的是 concatAll 会处理 source 先发出來的 observable，必须等这个 observable 结束，才会处理下一个 source 发出來的 observable，让我们看下面这个例子。
 ```
 const { interval, of } = require('rxjs')
-const { take } = require('rxjs/operators')
+const { take, concatAll } = require('rxjs/operators')
 
-var obs1 = interval(1000).take(5);
+var obs1 = interval(1000).take(3);
 var obs2 = interval(500).take(2);
 var obs3 = interval(2000).take(1);
 
-var source = of(obs1, obs2, obs3);
+var source$ = of(obs1, obs2, obs3);
 
-var example = source.concatAll();
+var example$ = source$.pipe(
+  concatAll()
+);
 
-example.subscribe({
+example$.subscribe({
     next: (value) => { console.log(value); },
     error: (err) => { console.log('Error: ' + err); },
     complete: () => { console.log('complete'); }
@@ -401,8 +401,6 @@ example.subscribe({
 // 0
 // 1
 // 2
-// 3
-// 4
 // 0
 // 1
 // 0
@@ -432,8 +430,8 @@ output.subscribe(x => console.log(x))
 #### 例子：实现简易拖拽
 需求描述：
 
-* 首先画面上有一个元件(#drag)
-* 当鼠标在元件(#drag)上按下左键(mousedown)时，开始监听鼠标移动(mousemove)的位置
+* 首先页面上有一个元素(#drag)
+* 当鼠标在元素(#drag)上按下左键(mousedown)时，开始监听鼠标移动(mousemove)的位置
 * 当鼠标左键放掉(mouseup)时，结束监听鼠标移动
 * 当鼠标移动(mousemove)被监听时，跟着修改元件的样式属性
 
@@ -584,20 +582,18 @@ range$.pipe(
   catchError(e => of('新的Observable'))
 ).subscribe(v => console.log(v))
 
-// 重试Promise
-let times = 1
+// 重试Promise，模拟api请求
 const observable$ = of(1)
 const fetchPromise = function () {
-  console.log(times++)
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       reject(new Error('来自Promise的错误'))
-    }, 1000)
+    }, 500)
   })
 }
 
 observable$.pipe(
-  switchMap(num => from(fetchPromise())),
+  switchMap(num => fetchPromise()),
   retry(3),
   catchError(e => of('catchError'))
 ).subscribe({
@@ -626,12 +622,12 @@ range$.pipe(
 ### 应用场景
 
 优点：
-* 统一了异步编程的规范，将Promise、ajax、浏览器事件等，通通封装成序列
+* 统一了异步编程的规范，将Promise、ajax、浏览器事件等，通通封装成Observable对象
 * 强大的操作符能够简化异步操作，提升代码的简洁性
 * rxjs6.0对模块化做了优化，更好的支持webpack的tree-shaking
 
 缺点：
-* 学习曲线陡峭，相关文档介绍少，大多资料都停留在v5版本，需要踩坑
+* 学习曲线较陡峭，相关文档介绍少，大多资料都停留在v5版本，需要踩坑
 * 看场景，不是一种普适性的解决方案
 
 适用场景：异步操作繁杂，多数据源
